@@ -1,15 +1,21 @@
+"use client";
+
+import { useState } from "react";
+
 export default function Home() {
+  const [contactOpen, setContactOpen] = useState(false);
+
   return (
     <div className="min-h-screen bg-neutral-950 text-white flex flex-col">
       {/* Nav */}
       <nav className="flex items-center justify-between px-8 py-6 md:px-16">
         <span className="text-xl font-bold tracking-tight">persaille</span>
-        <a
-          href="mailto:hello@persaille.com"
-          className="text-sm text-neutral-400 hover:text-white transition-colors"
+        <button
+          onClick={() => setContactOpen(true)}
+          className="text-base text-neutral-400 hover:text-white transition-colors cursor-pointer"
         >
           Get in touch
-        </a>
+        </button>
       </nav>
 
       {/* Hero */}
@@ -23,7 +29,7 @@ export default function Home() {
         </h1>
 
         <div className="mt-12 max-w-md">
-          <p className="text-lg text-neutral-400 leading-relaxed">
+          <p className="text-xl text-neutral-400 leading-relaxed">
             Websites, marketing, and SEO — built right.
           </p>
         </div>
@@ -43,6 +49,37 @@ export default function Home() {
           &copy; {new Date().getFullYear()} Persaille
         </p>
       </footer>
+
+      {/* Contact Modal */}
+      {contactOpen && (
+        <div
+          className="fixed inset-0 bg-black/70 flex items-center justify-center z-50"
+          onClick={() => setContactOpen(false)}
+        >
+          <div
+            className="bg-neutral-900 border border-neutral-800 rounded-lg px-10 py-8 text-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-lg font-bold mb-6">Get in touch</h2>
+            <p className="text-neutral-300">
+              <a href="tel:2012137155" className="hover:text-white transition-colors">
+                (201) 213-7155
+              </a>
+            </p>
+            <p className="text-neutral-300 mt-2">
+              <a href="mailto:dale@persaille.com" className="hover:text-white transition-colors">
+                dale@persaille.com
+              </a>
+            </p>
+            <button
+              onClick={() => setContactOpen(false)}
+              className="mt-6 text-sm text-neutral-500 hover:text-white transition-colors cursor-pointer"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
