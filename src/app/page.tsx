@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import InteractiveStrip from "./interactive-strip";
 
 const NAV_ITEMS = [
   "contact",
@@ -59,40 +60,39 @@ export default function Home() {
         </nav>
       </aside>
 
+      {/* Interactive art strip */}
+      <InteractiveStrip />
+
       {/* Main content */}
-      <div className="flex-1 flex flex-col ml-52">
+      <div className="flex-1 flex flex-col">
         {/* Nav */}
-        <nav className="flex items-center justify-end px-8 py-6 md:px-16">
+        <nav className="flex items-center justify-center px-8 py-6">
           <span className="text-xl font-bold tracking-tight">persaille</span>
         </nav>
 
         {/* Hero */}
         <main className="flex-1 flex flex-col items-center justify-center px-8 text-center">
           <h1 className="text-6xl sm:text-8xl md:text-9xl font-black tracking-tighter leading-none">
-            Easy.
-            <br />
-            Simple.
+            Fast.
             <br />
             Reliable.
+            <br />
+            Affordable.
           </h1>
 
-          <div className="mt-12 max-w-md">
-            <p className="text-xl text-neutral-400 leading-relaxed">
-              Websites, marketing, and SEO — built right.
-            </p>
-          </div>
+          <p className="mt-12 text-xl text-neutral-400">
+            Web Design, SEO, Marketing
+          </p>
 
-          <div className="mt-16 flex items-center gap-4">
+          <div className="mt-8 flex items-center gap-4">
             <div className="h-px w-12 bg-neutral-700" />
-            <p className="text-sm text-neutral-500">
-              Founded by Dale Percelay, Computer Science @ Cal Poly
-            </p>
+            <p className="text-sm text-neutral-500">Dale Percelay</p>
             <div className="h-px w-12 bg-neutral-700" />
           </div>
         </main>
 
         {/* Footer */}
-        <footer className="px-8 py-8 md:px-16 text-center">
+        <footer className="px-8 py-8 text-center">
           <p className="text-xs text-neutral-600">
             &copy; {new Date().getFullYear()} Persaille
           </p>
