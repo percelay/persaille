@@ -1,17 +1,5 @@
 @import "tailwindcss";
 
-@keyframes subtle-shake {
-  0%, 100% { transform: translateX(0) scale(1.1); }
-  20% { transform: translateX(-1px) scale(1.1); }
-  40% { transform: translateX(1px) scale(1.1); }
-  60% { transform: translateX(-0.5px) scale(1.1); }
-  80% { transform: translateX(0.5px) scale(1.1); }
-}
-
 .sidebar-glow {
   text-shadow: 0 0 8px rgba(255, 255, 255, 0.15), 0 0 20px rgba(255, 255, 255, 0.06);
-}
-
-.sidebar-shake {
-  animation: subtle-shake 0.4s ease-in-out;
 }

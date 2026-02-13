@@ -10,12 +10,14 @@ interface Node {
   vx: number;
   vy: number;
   radius: number;
+  isNeon: boolean;
 }
 
-const NEON = "#d4ff00";
+const NEON = "rgb(200, 255, 0)";
 const NODE_COUNT = 28;
 const CONNECT_DIST = 100;
-const MOUSE_RADIUS = 150;
+const MOUSE_RADIUS = 120;
+const NEON_FRACTION = 0.05;
 
 export default function InteractiveStrip() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -35,15 +37,22 @@ export default function InteractiveStrip() {
       canvas.height = rect.height * devicePixelRatio;
       canvas.style.width = rect.width + "px";
       canvas.style.height = rect.height + "px";
-      ctx.scale(devicePixelRatio, devicePixelRatio);
+      ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
       initNodes(rect.width, rect.height);
     };
 
     const initNodes = (w: number, h: number) => {
       const nodes: Node[] = [];
+      const neonCount = Math.max(1, Math.round(NODE_COUNT * NEON_FRACTION));
+      const neonIndices = new Set<number>();
+      while (neonIndices.size < neonCount) {
+        neonIndices.add(Math.floor(Math.random() * NODE_COUNT));
+      }
+
       for (let i = 0; i < NODE_COUNT; i++) {
         const x = Math.random() * w;
-        const y = (h / (NODE_COUNT + 1)) * (i + 1) + (Math.random() - 0.5) * 40;
+        const y =
+          (h / (NODE_COUNT + 1)) * (i + 1) + (Math.random() - 0.5) * 40;
         nodes.push({
           x,
           y,
@@ -52,6 +61,7 @@ export default function InteractiveStrip() {
           vx: 0,
           vy: 0,
           radius: 1.5 + Math.random() * 2,
+          isNeon: neonIndices.has(i),
         });
       }
       nodesRef.current = nodes;
@@ -59,11 +69,24 @@ export default function InteractiveStrip() {
 
     const onMouseMove = (e: MouseEvent) => {
       const rect = canvas.getBoundingClientRect();
-      mouseRef.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+      mouseRef.current = {
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top,
+      };
     };
 
     const onMouseLeave = () => {
       mouseRef.current = { x: -1000, y: -1000 };
+    };
+
+    // Snap to cardinal/diagonal directions for angular movement
+    const snapAngle = (vx: number, vy: number): [number, number] => {
+      const mag = Math.sqrt(vx * vx + vy * vy);
+      if (mag < 0.01) return [0, 0];
+      const angle = Math.atan2(vy, vx);
+      // Snap to nearest 45-degree increment
+      const snapped = Math.round(angle / (Math.PI / 4)) * (Math.PI / 4);
+      return [Math.cos(snapped) * mag, Math.sin(snapped) * mag];
     };
 
     const draw = () => {
@@ -74,32 +97,48 @@ export default function InteractiveStrip() {
       const mouse = mouseRef.current;
       const nodes = nodesRef.current;
 
-      // Update node positions
+      // Update positions — angular, snappy movement
       for (const node of nodes) {
         const dx = mouse.x - node.x;
         const dy = mouse.y - node.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
 
-        if (dist < MOUSE_RADIUS) {
-          const force = (MOUSE_RADIUS - dist) / MOUSE_RADIUS;
-          // Repel from mouse
-          node.vx -= (dx / dist) * force * 2;
-          node.vy -= (dy / dist) * force * 2;
+        if (dist < MOUSE_RADIUS && dist > 0) {
+          const force = ((MOUSE_RADIUS - dist) / MOUSE_RADIUS) * 3;
+          const [sx, sy] = snapAngle(-dx, -dy);
+          const mag = Math.sqrt(sx * sx + sy * sy);
+          if (mag > 0) {
+            node.vx += (sx / mag) * force;
+            node.vy += (sy / mag) * force;
+          }
         }
 
-        // Spring back to base position
-        node.vx += (node.baseX - node.x) * 0.03;
-        node.vy += (node.baseY - node.y) * 0.03;
+        // Spring back — with snapping for angular return
+        const returnDx = node.baseX - node.x;
+        const returnDy = node.baseY - node.y;
+        const returnDist = Math.sqrt(returnDx * returnDx + returnDy * returnDy);
 
-        // Damping
-        node.vx *= 0.9;
-        node.vy *= 0.9;
+        if (returnDist > 1) {
+          const [sx, sy] = snapAngle(returnDx, returnDy);
+          const mag = Math.sqrt(sx * sx + sy * sy);
+          if (mag > 0) {
+            node.vx += (sx / mag) * returnDist * 0.04;
+            node.vy += (sy / mag) * returnDist * 0.04;
+          }
+        }
 
-        node.x += node.vx;
-        node.y += node.vy;
+        // Heavy damping for stiff, snappy feel
+        node.vx *= 0.75;
+        node.vy *= 0.75;
+
+        // Quantize movement to whole pixels for angular look
+        const moveX = Math.abs(node.vx) > 0.3 ? node.vx : 0;
+        const moveY = Math.abs(node.vy) > 0.3 ? node.vy : 0;
+        node.x += moveX;
+        node.y += moveY;
       }
 
-      // Draw connections
+      // Draw connections — straight lines only
       for (let i = 0; i < nodes.length; i++) {
         for (let j = i + 1; j < nodes.length; j++) {
           const a = nodes[i];
@@ -111,26 +150,11 @@ export default function InteractiveStrip() {
           if (dist < CONNECT_DIST) {
             const opacity = 1 - dist / CONNECT_DIST;
 
-            // Check if connection is near mouse
-            const midX = (a.x + b.x) / 2;
-            const midY = (a.y + b.y) / 2;
-            const mouseDist = Math.sqrt(
-              (mouse.x - midX) ** 2 + (mouse.y - midY) ** 2
-            );
-            const nearMouse = mouseDist < MOUSE_RADIUS;
-
-            if (nearMouse) {
-              const mouseProx = 1 - mouseDist / MOUSE_RADIUS;
-              ctx.strokeStyle = `rgba(212, 255, 0, ${opacity * mouseProx * 0.6})`;
-              ctx.lineWidth = 1 + mouseProx;
-            } else {
-              ctx.strokeStyle = `rgba(255, 255, 255, ${opacity * 0.15})`;
-              ctx.lineWidth = 0.5;
-            }
-
+            ctx.strokeStyle = `rgba(255, 255, 255, ${opacity * 0.12})`;
+            ctx.lineWidth = 0.5;
             ctx.beginPath();
-            ctx.moveTo(a.x, a.y);
-            ctx.lineTo(b.x, b.y);
+            ctx.moveTo(Math.round(a.x), Math.round(a.y));
+            ctx.lineTo(Math.round(b.x), Math.round(b.y));
             ctx.stroke();
           }
         }
@@ -144,32 +168,47 @@ export default function InteractiveStrip() {
         const nearMouse = dist < MOUSE_RADIUS;
         const proximity = nearMouse ? 1 - dist / MOUSE_RADIUS : 0;
 
-        // Glow
-        if (nearMouse && proximity > 0.2) {
-          ctx.beginPath();
-          ctx.arc(node.x, node.y, node.radius + 8 * proximity, 0, Math.PI * 2);
+        const px = Math.round(node.x);
+        const py = Math.round(node.y);
+
+        // Neon nodes glow only when mouse is near
+        if (node.isNeon && nearMouse && proximity > 0.3) {
+          // Intense neon glow
+          const glowRadius = node.radius + 14 * proximity;
           const grad = ctx.createRadialGradient(
-            node.x, node.y, 0,
-            node.x, node.y, node.radius + 8 * proximity
+            px, py, 0,
+            px, py, glowRadius
           );
-          grad.addColorStop(0, `rgba(212, 255, 0, ${proximity * 0.3})`);
-          grad.addColorStop(1, "rgba(212, 255, 0, 0)");
+          grad.addColorStop(0, `rgba(200, 255, 0, ${proximity * 0.9})`);
+          grad.addColorStop(0.4, `rgba(200, 255, 0, ${proximity * 0.3})`);
+          grad.addColorStop(1, "rgba(200, 255, 0, 0)");
+          ctx.beginPath();
+          ctx.arc(px, py, glowRadius, 0, Math.PI * 2);
           ctx.fillStyle = grad;
           ctx.fill();
-        }
 
-        // Node dot
-        ctx.beginPath();
-        ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
-        if (nearMouse) {
-          const r = Math.round(212 + (255 - 212) * (1 - proximity));
-          const g = Math.round(255);
-          const b = Math.round(0 + 255 * (1 - proximity));
-          ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${0.3 + proximity * 0.7})`;
+          // Bright core
+          ctx.beginPath();
+          ctx.arc(px, py, node.radius + 1, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(200, 255, 0, ${0.8 + proximity * 0.2})`;
+          ctx.fill();
+
+          // White-hot center
+          ctx.beginPath();
+          ctx.arc(px, py, node.radius * 0.5, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(255, 255, 255, ${proximity})`;
+          ctx.fill();
         } else {
-          ctx.fillStyle = "rgba(255, 255, 255, 0.25)";
+          // Regular white node
+          ctx.beginPath();
+          ctx.arc(px, py, node.radius, 0, Math.PI * 2);
+          if (nearMouse) {
+            ctx.fillStyle = `rgba(255, 255, 255, ${0.2 + proximity * 0.5})`;
+          } else {
+            ctx.fillStyle = "rgba(255, 255, 255, 0.2)";
+          }
+          ctx.fill();
         }
-        ctx.fill();
       }
 
       rafRef.current = requestAnimationFrame(draw);
