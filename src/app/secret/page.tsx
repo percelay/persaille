@@ -6,8 +6,6 @@ import { Press_Start_2P } from "next/font/google";
 
 const pixel = Press_Start_2P({ weight: "400", subsets: ["latin"] });
 
-type Phase = "idle" | "white" | "img2" | "img1" | "img0" | "fadeout";
-
 const FACTS = [
   { stat: "48HR",    label: "TURNAROUND"  },
   { stat: "100%",    label: "HAND-CODED"  },
@@ -18,86 +16,57 @@ const FACTS = [
 ];
 
 export default function SecretPage() {
-  const [visible, setVisible]   = useState(false);
-  const [cursor, setCursor]     = useState(true);
-  const [phase, setPhase]       = useState<Phase>("idle");
+  const [visible, setVisible] = useState(false);
+  const [cursor, setCursor]   = useState(true);
   const router = useRouter();
 
   useEffect(() => {
-    // Fade in on mount
-    const t = setTimeout(() => setVisible(true), 60);
-    // Blinking cursor
+    const t     = setTimeout(() => setVisible(true), 60);
     const blink = setInterval(() => setCursor((c) => !c), 530);
-    // Preload images for reverse transition
-    ["/1.png", "/2.png", "/3.png"].forEach((src) => {
-      const img = new Image();
-      img.src = src;
-    });
-    return () => {
-      clearTimeout(t);
-      clearInterval(blink);
-    };
+    return () => { clearTimeout(t); clearInterval(blink); };
   }, []);
 
-  // Reverse transition: 3 → 2 → 1 → fade → home
   const handleBack = useCallback(() => {
-    if (phase !== "idle") return;
-    setPhase("white");
-    setTimeout(() => setPhase("img2"), 300);   // show 3.png
-    setTimeout(() => setPhase("img1"), 750);   // show 2.png
-    setTimeout(() => setPhase("img0"), 1200);  // show 1.png
-    setTimeout(() => setPhase("fadeout"), 1650);
-    setTimeout(() => router.push("/"), 2100);
-  }, [phase, router]);
-
-  const showOverlay = phase !== "idle" && phase !== "white";
-  const imgSrc =
-    phase === "img2" ? "/3.png"
-    : phase === "img1" ? "/2.png"
-    : phase === "img0" ? "/1.png"
-    : null;
-
-  const transitioning = phase !== "idle";
+    router.push("/");
+  }, [router]);
 
   return (
     <div
-      className={pixel.className}
       style={{
         minHeight: "100vh",
-        backgroundColor: "#050505",
-        // Subtle horizontal scanlines — the retro CRT soul of the page
-        backgroundImage:
-          "repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(255,255,255,0.014) 3px, rgba(255,255,255,0.014) 4px)",
+        // 1.png is the page itself — not a transition buffer
+        backgroundImage: "url('/1.png')",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundAttachment: "fixed",
+        position: "relative",
         display: "flex",
         flexDirection: "column",
-        color: "#fff",
-        opacity: visible ? 1 : 0,
-        transition: "opacity 650ms ease-out",
       }}
     >
-      {/* Transition overlay — reverse image sequence */}
-      {showOverlay && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 9999,
-            backgroundColor: "#000",
-            backgroundImage: imgSrc ? `url(${imgSrc})` : "none",
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-            opacity: phase === "fadeout" ? 0 : 1,
-            transition: phase === "fadeout" ? "opacity 400ms ease-out" : "none",
-          }}
-        />
-      )}
-
-      {/* Back button — very quiet, top-left */}
-      <BackButton onClick={handleBack} fontFamily={pixel.style.fontFamily} />
-
-      {/* Main content — vertically + horizontally centered */}
+      {/* Dark overlay — ensures pixel text is legible over the green image */}
       <div
         style={{
+          position: "absolute",
+          inset: 0,
+          backgroundColor: "rgba(0, 0, 0, 0.62)",
+          // Subtle scanline grain sits on top of the overlay
+          backgroundImage:
+            "repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.18) 3px, rgba(0,0,0,0.18) 4px)",
+          pointerEvents: "none",
+          zIndex: 0,
+        }}
+      />
+
+      {/* Back button */}
+      <BackButton onClick={handleBack} fontFamily={pixel.style.fontFamily} />
+
+      {/* All content sits above the overlay */}
+      <div
+        className={pixel.className}
+        style={{
+          position: "relative",
+          zIndex: 1,
           flex: 1,
           display: "flex",
           flexDirection: "column",
@@ -108,6 +77,9 @@ export default function SecretPage() {
           maxWidth: "58rem",
           margin: "0 auto",
           width: "100%",
+          color: "#fff",
+          opacity: visible ? 1 : 0,
+          transition: "opacity 650ms ease-out",
         }}
       >
         {/* Title */}
@@ -121,15 +93,13 @@ export default function SecretPage() {
               lineHeight: 1.2,
               cursor: "default",
               userSelect: "none",
-              textShadow: transitioning
-                ? "0 0 50px rgba(255,255,255,0.5)"
-                : "none",
-              transition: "text-shadow 280ms ease",
+              // Text shadow for extra pop against the image
+              textShadow:
+                "0 2px 12px rgba(0,0,0,0.8), 0 0 40px rgba(0,0,0,0.6)",
               letterSpacing: "-0.02em",
             }}
           >
             PERSAILLE
-            {/* Blinking cursor — terminal heartbeat */}
             <span
               style={{
                 opacity: cursor ? 1 : 0,
@@ -146,9 +116,10 @@ export default function SecretPage() {
             style={{
               fontFamily: pixel.style.fontFamily,
               fontSize: "0.45rem",
-              color: "rgba(255,255,255,0.22)",
+              color: "rgba(255,255,255,0.55)",
               letterSpacing: "0.28em",
               marginTop: "1.1rem",
+              textShadow: "0 1px 6px rgba(0,0,0,0.9)",
             }}
           >
             DALE PERCELAY // WEB + SEO + MARKETING
@@ -156,40 +127,15 @@ export default function SecretPage() {
         </div>
 
         {/* Divider */}
-        <div
-          style={{
-            width: "100%",
-            display: "flex",
-            alignItems: "center",
-            gap: "0.75rem",
-          }}
-        >
-          <div
-            style={{
-              flex: 1,
-              height: "1px",
-              backgroundColor: "rgba(255,255,255,0.1)",
-            }}
-          />
-          <span
-            style={{
-              fontFamily: pixel.style.fontFamily,
-              fontSize: "0.45rem",
-              color: "rgba(255,255,255,0.18)",
-            }}
-          >
+        <div style={{ width: "100%", display: "flex", alignItems: "center", gap: "0.75rem" }}>
+          <div style={{ flex: 1, height: "1px", backgroundColor: "rgba(255,255,255,0.25)" }} />
+          <span style={{ fontFamily: pixel.style.fontFamily, fontSize: "0.45rem", color: "rgba(255,255,255,0.35)" }}>
             ■
           </span>
-          <div
-            style={{
-              flex: 1,
-              height: "1px",
-              backgroundColor: "rgba(255,255,255,0.1)",
-            }}
-          />
+          <div style={{ flex: 1, height: "1px", backgroundColor: "rgba(255,255,255,0.25)" }} />
         </div>
 
-        {/* Fact boxes — the white boxes with black text, pixelated */}
+        {/* Fact boxes — white boxes, black text, hard pixel shadow */}
         <div
           style={{
             display: "grid",
@@ -208,14 +154,15 @@ export default function SecretPage() {
           ))}
         </div>
 
-        {/* Footer line */}
+        {/* Copyright */}
         <p
           style={{
             fontFamily: pixel.style.fontFamily,
             fontSize: "0.38rem",
-            color: "rgba(255,255,255,0.1)",
+            color: "rgba(255,255,255,0.35)",
             letterSpacing: "0.22em",
             textAlign: "center",
+            textShadow: "0 1px 4px rgba(0,0,0,0.8)",
           }}
         >
           © {new Date().getFullYear()} PERSAILLE. ALL RIGHTS RESERVED.
@@ -245,19 +192,17 @@ function FactBox({
       style={{
         backgroundColor: "#ffffff",
         padding: "1.4rem 1.2rem 1.2rem",
-        // The defining pixel-aesthetic: hard offset shadow, no blur, no radius
         transform: hovered ? "translate(-3px, -3px)" : "translate(0, 0)",
+        // Hard-offset shadow — the white box "lifts" off the image on hover
         boxShadow: hovered
-          ? "6px 6px 0px rgba(255,255,255,0.22)"
-          : "4px 4px 0px rgba(255,255,255,0.1)",
+          ? "6px 6px 0px rgba(255,255,255,0.35)"
+          : "4px 4px 0px rgba(255,255,255,0.15)",
         transition: "transform 110ms ease-out, box-shadow 110ms ease-out",
         cursor: "default",
-        // Subtle scanline overlay inside the box — faint grain
         backgroundImage:
           "repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.025) 3px, rgba(0,0,0,0.025) 4px)",
       }}
     >
-      {/* Stat — big pixel number/word */}
       <div
         style={{
           fontFamily,
@@ -270,7 +215,6 @@ function FactBox({
       >
         {stat}
       </div>
-      {/* Label — small pixel subtext */}
       <div
         style={{
           fontFamily,
@@ -298,7 +242,7 @@ function BackButton({
   const [hovered, setHovered] = useState(false);
 
   return (
-    <div style={{ position: "fixed", top: "1.25rem", left: "1.5rem", zIndex: 40 }}>
+    <div style={{ position: "fixed", top: "1.25rem", left: "1.5rem", zIndex: 10 }}>
       <button
         onClick={onClick}
         onMouseEnter={() => setHovered(true)}
@@ -306,13 +250,14 @@ function BackButton({
         style={{
           fontFamily,
           fontSize: "0.44rem",
-          color: hovered ? "rgba(255,255,255,0.6)" : "rgba(255,255,255,0.18)",
+          color: hovered ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.35)",
           letterSpacing: "0.12em",
           background: "none",
           border: "none",
           cursor: "pointer",
           transition: "color 140ms ease",
           padding: "0.25rem 0",
+          textShadow: "0 1px 6px rgba(0,0,0,0.9)",
         }}
       >
         [← BACK]
