@@ -260,8 +260,23 @@ export default function Home() {
         </main>
 
         {/* Footer */}
-        <footer className="px-8 py-8 text-center">
-          <p className="text-xs text-neutral-700">
+        <footer className="px-8 py-8 text-center flex flex-col items-center gap-2">
+          <div className="flex items-center gap-6">
+            <a
+              href="mailto:dale@persaille.com"
+              className="text-xs text-neutral-600 hover:text-neutral-300 transition-colors duration-200 tracking-wide"
+            >
+              dale@persaille.com
+            </a>
+            <div className="h-3 w-px bg-neutral-800" />
+            <a
+              href="tel:2012137155"
+              className="text-xs text-neutral-600 hover:text-neutral-300 transition-colors duration-200 tracking-wide"
+            >
+              (201) 213-7155
+            </a>
+          </div>
+          <p className="text-xs text-neutral-800">
             &copy; {new Date().getFullYear()} Persaille
           </p>
         </footer>
